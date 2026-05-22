@@ -22,6 +22,7 @@ export class ClusterClient<DiscordClient = DjsDiscordClient> extends AsyncEventE
     process: ChildClient | null;
     messageHandler: any;
     promise: PromiseHandler;
+    private _redis: any;
 
     constructor(client: DiscordClient) {
         super();
@@ -70,6 +71,7 @@ export class ClusterClient<DiscordClient = DjsDiscordClient> extends AsyncEventE
     private async _startHeartbeat() {
         const redis = new (await import('../Util/RedisClient.ts')).RedisClient();
         await redis.connect().catch(() => {});
+        this._redis = redis;
         const interval = Number(this.info.HEARTBEAT_INTERVAL || 10000);
 
         setInterval(async () => {
@@ -244,6 +246,11 @@ export class ClusterClient<DiscordClient = DjsDiscordClient> extends AsyncEventE
     public triggerReady() {
         this.send({ _type: messageType.CLIENT_READY });
         this.ready = true;
+        if (this._redis) {
+            const interval = Number(this.info.HEARTBEAT_INTERVAL || 10000);
+            const ttl = Math.floor((interval * 2.5) / 1000);
+            this._redis.set(`hb:cluster:${this.id}`, Date.now().toString(), ttl).catch(() => {});
+        }
         return this.ready;
     }
 
