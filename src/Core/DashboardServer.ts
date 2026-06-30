@@ -6,14 +6,18 @@ export interface DashboardOptions {
 }
 
 export class DashboardServer {
-    public manager: ClusterManager;
+    public manager?: ClusterManager;
     public port: number;
     private password?: string;
 
-    constructor(manager: ClusterManager, options: DashboardOptions = {}) {
-        this.manager = manager;
+    constructor(options: DashboardOptions = {}) {
         this.port = options.port || 3001;
         this.password = options.password;
+    }
+
+    public build(manager: ClusterManager) {
+        this.manager = manager;
+        this.start();
     }
 
     public start() {
@@ -39,12 +43,12 @@ export class DashboardServer {
                     const clusterId = body.clusterId;
 
                     if (clusterId !== undefined) {
-                        const cluster = this.manager.clusters.get(clusterId);
+                        const cluster = this.manager?.clusters.get(clusterId);
                         if (!cluster) return new Response('Cluster not found', { status: 404 });
                         cluster.respawn();
                         return new Response(`Restarting Cluster ${clusterId}`);
                     } else {
-                        this.manager.respawnAll();
+                        this.manager?.respawnAll();
                         return new Response('Restarting all clusters');
                     }
                 }
@@ -56,9 +60,9 @@ export class DashboardServer {
                     const reason = body.reason || 'Maintenance via API';
 
                     if (enable) {
-                        this.manager.triggerMaintenance(reason);
+                        this.manager?.triggerMaintenance(reason);
                     } else {
-                        this.manager.triggerMaintenance();
+                        this.manager?.triggerMaintenance();
                     }
                     return new Response(`Maintenance ${enable ? 'enabled' : 'disabled'}`);
                 }
@@ -67,15 +71,14 @@ export class DashboardServer {
             },
         });
 
-        this.manager._debug(`[Dashboard] Server started on port ${this.port}`);
+        this.manager?._debug(`[Dashboard] Server started on port ${this.port}`);
     }
 
     private async getStats() {
-        const clusterStats = await this.manager.fetchClientValues('cluster.info');
-        // Simple aggregation for now
+        const clusterStats = await this.manager?.fetchClientValues('cluster.info');
         return {
-            totalClusters: this.manager.totalClusters,
-            activeClusters: this.manager.clusters.size,
+            totalClusters: this.manager?.totalClusters,
+            activeClusters: this.manager?.clusters.size,
             memoryUsage: process.memoryUsage(),
             clusters: clusterStats,
         };
