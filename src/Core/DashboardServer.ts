@@ -39,7 +39,8 @@ export class DashboardServer {
 
                 // Restart Endpoint
                 if (url.pathname === '/restart' && req.method === 'POST') {
-                    const body = (await req.json()) as any;
+                    const body = await req.json().catch(() => null) as any;
+                    if (!body) return new Response('Invalid JSON body', { status: 400 });
                     const clusterId = body.clusterId;
 
                     if (clusterId !== undefined) {
@@ -55,16 +56,17 @@ export class DashboardServer {
 
                 // Maintenance Endpoint
                 if (url.pathname === '/maintenance' && req.method === 'POST') {
-                    const body = (await req.json()) as any;
-                    const enable = body.enable;
+                    const body = await req.json().catch(() => null) as any;
+                    if (!body) return new Response('Invalid JSON body', { status: 400 });
+                    if (typeof body.enable !== 'boolean') return new Response('Missing required field: enable (boolean)', { status: 400 });
                     const reason = body.reason || 'Maintenance via API';
 
-                    if (enable) {
+                    if (body.enable) {
                         this.manager?.triggerMaintenance(reason);
                     } else {
                         this.manager?.triggerMaintenance();
                     }
-                    return new Response(`Maintenance ${enable ? 'enabled' : 'disabled'}`);
+                    return new Response(`Maintenance ${body.enable ? 'enabled' : 'disabled'}`);
                 }
 
                 return new Response('Not Found', { status: 404 });
